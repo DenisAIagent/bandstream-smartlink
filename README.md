@@ -347,3 +347,270 @@ This reads the source language file from `messages/`, sends each key's value to 
 6. If adding new database fields, create a Prisma migration: `npx prisma migrate dev --name <description>`.
 7. If adding new i18n strings, add them to `messages/en.json` and run the translate script.
 8. Submit a pull request with a clear description of changes.
+
+---
+---
+
+# Update V1.1
+
+> This section documents everything added on top of the original platform. The
+> content above is unchanged. V1.1 turns band.stream from a **one-page-per-artist**
+> tool into a **multi-release SmartLink platform** with subscription plans, label
+> teams, and an internal support back-office. All additions follow the existing
+> conventions (route guards in `lib/auth/api-guard.ts`, ownership in
+> `lib/auth/ownership.ts`, services in `lib/services/`, `next-intl` flat
+> namespaces, Prisma additive migrations).
+
+## 1. What changed at a glance
+
+| Before (V1.0) | After (V1.1) |
+|---|---|
+| 1 artist = 1 smart-link page | 1 artist = **N SmartLinks** (one per release) + an **Artist Hub** page |
+| `<artist>.band.stream` = the page | `<artist>.band.stream` = the **hub** (bio, socials, release list); `<artist>.band.stream/<slug>` = a **release SmartLink** |
+| No subscription logic | **Free / Pro / Label** plans with enforced quotas |
+| Single user per account | **Label teams** (up to 5 users sharing a roster) |
+| Admin = band/platform/user CRUD | + **Superadmin roles** and a **client 360° profile** for support |
+| Umami client unused | **Per-artist and per-SmartLink** analytics, consent-gated click tracking |
+| Manual platform links | **Odesli/Songlink autofill** (one paste → every platform) |
+
+The original release-level fields on `Band` (`album`, `template`, `musicSample`,
+`BandPlatform`) are **kept but deprecated** — they back a legacy render fallback so
+nothing breaks during/after the migration.
+
+---
+
+## 2. New domain model
+
+### SmartLink (one release per artist)
+
+```
+model SmartLink {
+  id, bandId (→ Band), title, slug,
+  coverImage, musicSample, template,
+  publishedAt, unpublishedAt, deletedAt, uuid,
+  platforms: SmartLinkPlatform[]
+  @@unique([bandId, slug])
+}
+
+model SmartLinkPlatform {  // per-release platform links
+  smartLinkId (→ SmartLink, cascade), platformId (→ Platform), customURL
+  @@unique([smartLinkId, platformId])
+}
+```
+
+### Artist Hub fields (added to `Band`)
+
+```
+Band.bio       String?   // shown on the hub
+Band.socials   Json?     // fixed keys: instagram, tiktok, youtube, x, facebook, website (zod-validated, https only)
+Band.umamiWebsiteId String? @unique  // one Umami website per artist
+```
+
+### Plans & label teams
+
+```
+enum SubscriptionPlan { FREE | PRO | LABEL }   // LABEL added
+
+model LabelMember {  // a collaborator invited to a label account
+  labelOwnerId (→ User "LabelOwner"), email, userId? (→ User "LabelMembership")
+  @@unique([labelOwnerId, email])
+}
+```
+
+> **Migration**: `node scripts/migrate-smartlinks.js` (idempotent) creates one
+> SmartLink per existing Band, copying `album→title`, cover, sample, template,
+> `BandPlatform→SmartLinkPlatform`, and publish state. Slug is derived from the
+> album name (or `latest`), uniquified per band, and kept out of `RESERVED_SLUGS`.
+
+---
+
+## 3. Subscription plans
+
+Limits live in `lib/plan-limits-shared.ts` (`null` = unlimited):
+
+| Plan | Artists | SmartLinks / artist | Team seats |
+|---|---|---|---|
+| **Free** | 1 | 1 | 1 |
+| **Pro** (€5/mo) | 1 | unlimited | 1 |
+| **Label** (€25/mo) | 100 | unlimited | **5** (manager + 4) |
+
+- Enforced **server-side before creation**: `canCreateArtist` / `canCreateSmartLink`
+  in `lib/services/plan-limits.ts`. Over-limit returns `403 { error: "plan_limit" }`
+  or `403 { error: "plan_limit_artists" }`; the UI shows an upsell card instead of
+  the wizard.
+- Plan is **activated manually by the team** (no self-serve Label checkout in V1.1):
+  the user table and the client 360° page have a plan selector →
+  `PATCH /api/admin/users/[id]/plan`.
+- For a label, the **plan that governs a band's rights is the band owner's plan**
+  (`getBandOwnerPlan`), so a Free team member inherits the label's Pro/Label rights
+  on the roster's artists.
+
+---
+
+## 4. Label teams (shared roster)
+
+A Label account = a **manager** + up to **4 invited members**, all working on the
+**same roster**.
+
+- Invite by email in **Settings → Label team** (`POST /api/dashboard/label/members`).
+  Existing users get access immediately; unknown emails create a `UserInvite` and
+  are resolved on first login (`resolveLabelMemberships` in `auth.ts`).
+- Access is **materialized as `UserBand MEMBER`** rows on every band the manager
+  owns (`lib/services/label-team.ts`). Artists created by any member belong to the
+  **manager** (single quota) and are shared with the whole team.
+- Removing a member deletes their non-OWNER `UserBand` rows on the label's bands.
+
+---
+
+## 5. Superadmin & client 360°
+
+For customer follow-up and support by the band.stream team:
+
+- **Internal roles**: `OWNER` (superadmin) and `ADMIN`. Only an OWNER can change a
+  user's role (`PATCH /api/admin/users/[id]/role`), and **cannot change their own**.
+- **Client 360° page** (`/admin/users/[id]`): identity, plan & role selectors, full
+  artist roster (with published/total SmartLink counts and links to edit), label
+  team, and the 10 most recent support tickets — backed by
+  `GET /api/admin/users/[id]/overview`.
+
+---
+
+## 6. Analytics (Umami)
+
+- **One Umami website per artist** (`Band.umamiWebsiteId`), provisioned lazily at
+  publish time (`ensureBandWebsite`). Per-SmartLink stats use Umami's `url` filter
+  (`/<slug>`), since all pages render at `/` on the artist subdomain.
+- **Consent-gated tracking**: `UmamiTracker` loads the script only after analytics
+  consent (`ConsentManager` dispatches a `bandstream:consent` event). Platform
+  clicks fire `umami.track('listen_<platform>', { platform, band })`.
+- **Dashboard stats** (`/dashboard/bands/[id]/stats`): summary cards on every plan;
+  time-series, per-platform clicks, and traffic sources on Pro/Label; a pill row
+  filters by SmartLink. Free shows a Pro upsell.
+- Env: `UMAMI_API_CLIENT_ENDPOINT` (+ `_USER_ID` / `_SECRET`) or `UMAMI_API_KEY`,
+  and `NEXT_PUBLIC_UMAMI_SCRIPT_URL`.
+
+---
+
+## 7. Odesli / Songlink autofill
+
+In the SmartLink wizard (step 2) and the admin band editor, pasting one
+track/album link fetches **all** platform links at once via
+`POST /api/dashboard/odesli/resolve` (Songlink). Unknown platforms are created on
+the fly; an unresolvable link (e.g. an artist page) returns `422 unresolvable_url`
+with a clear message.
+
+---
+
+## 8. Security hardening (V1.1 audit)
+
+A full application security review was run and the following were fixed:
+
+| Severity | Fix |
+|---|---|
+| Critical | Preview auth bypass (`PREVIEW_NO_AUTH`) is **force-disabled when `NODE_ENV=production`** and `.env` is excluded from the Docker context. |
+| High | `domainname` is **validated on every update** (`isValidDomainname`) — it feeds S3 keys, so this blocks path traversal. |
+| High | Middleware **backstop** returns `401` on `/api/admin` & `/api/dashboard` if a handler ever lacks a guard. |
+| Medium | Admin uploads re-encode through `sharp` with a server-set content-type; **size caps + pixel limits** on all uploads. |
+| Medium | **SSRF guard** (`lib/safe-fetch.ts`: https-only, blocks private/loopback/metadata IPs, timeout, size cap) on the Odesli thumbnail fetch; middleware no longer derives the fetch scheme from a client header. |
+| Low | `customURL` rejects `javascript:`/`data:` schemes; security headers (HSTS, `nosniff`, `X-Frame-Options`, Referrer-Policy, Permissions-Policy) in `next.config.ts`; `check-customer` no longer leaks draft existence. |
+
+> **Open items**: a strict nonce-based CSP, a non-root Docker `USER`, and an
+> OWNER-only restriction on plan changes are recommended before public production.
+
+---
+
+## 9. New API surface (V1.1)
+
+All under the existing guard conventions (`requireAuth` + ownership for dashboard,
+`requireAdmin` for admin):
+
+```
+# SmartLinks (dashboard, mirrored under /api/admin for the team)
+GET/POST   /api/dashboard/bands/[id]/smartlinks            # list / create (plan-gated)
+GET        /api/dashboard/bands/[id]/smartlinks/check-slug
+GET/PUT/DELETE /api/dashboard/smartlinks/[id]
+POST       /api/dashboard/smartlinks/[id]/publish | unpublish | upload
+PUT/DELETE /api/dashboard/smartlinks/[id]/platforms[/[platformId]]
+
+# Artist & catalog
+GET        /api/dashboard/platforms                        # read-only catalog
+GET        /api/dashboard/limits                           # label-aware quotas
+POST       /api/dashboard/odesli/resolve                   # Songlink autofill
+
+# Label teams
+GET/POST   /api/dashboard/label/members
+DELETE     /api/dashboard/label/members/[id]
+
+# Admin / support
+PATCH      /api/admin/users/[id]/plan
+PATCH      /api/admin/users/[id]/role                       # OWNER only
+GET        /api/admin/users/[id]/overview                   # client 360°
+```
+
+---
+
+## 10. Use cases & user stories
+
+### UC-1 — Independent artist, first release (Free)
+> *As a solo artist, I want to publish a smart link for my new single in under two
+> minutes, so I can share one link everywhere.*
+- Sign in → **Create artist** (name + subdomain) → **Create SmartLink** wizard:
+  title → paste a Spotify link (**Odesli fills every platform**) → pick a template →
+  **Publish**. Live at `myband.band.stream` (single release renders inline at the root).
+
+### UC-2 — Artist with a catalog (Pro)
+> *As a touring artist, I want one smart link per release and a hub page that lists
+> them all, so fans land on my latest drop or browse everything.*
+- Upgrade to Pro → create multiple SmartLinks (`/single-1`, `/album-2`, …) → add a
+  **bio and social links**: the root `<artist>.band.stream` becomes the **hub**
+  listing every release. Each SmartLink has its own artwork, template, and stats.
+
+### UC-3 — Label managing a roster (Label)
+> *As a label manager, I want my team to manage 100 artists from one account, so we
+> don't share passwords or hit per-artist limits.*
+- Team activates a **Label** plan → **Settings → Label team**: invite up to 4
+  collaborators. Everyone sees the shared roster (counter `X/100`), can create
+  artists (counted on the label's quota), and edit/publish their SmartLinks.
+
+### UC-4 — Release rollout with autofill
+> *As an artist/manager, I want to add all 10 streaming links at once, so I don't
+> copy-paste each platform.*
+- Wizard step 2 → paste the album's Spotify/Apple/Deezer link → **Auto-fill** →
+  all platforms pre-filled, editable, then saved.
+
+### UC-5 — Measuring a campaign
+> *As a Pro/Label user, I want to see views and platform clicks per release, so I
+> know what's converting.*
+- **Stats** → summary cards, daily time-series, **clicks per platform**, traffic
+  sources; a pill row switches between "All" and each SmartLink.
+
+### UC-6 — Customer support (band.stream team)
+> *As a band.stream admin, I want a 360° view of a customer, so I can help them and
+> manage their plan/role.*
+- **Users → click a name** → client 360°: identity, plan & role selectors, full
+  roster with edit links, label team, and recent support tickets.
+
+### UC-7 — Upgrade prompt at the limit
+> *As a Free user hitting the limit, I want a clear path to upgrade, so I understand
+> why I'm blocked.*
+- Creating a 2nd SmartLink (Free) or a 2nd artist (Free/Pro) shows an **upsell card**
+  ("unlimited SmartLinks / up to 100 artists is a Pro/Label feature") linking to
+  billing, instead of a raw error.
+
+---
+
+## 11. Known follow-ups (handoff)
+
+- **i18n**: `fr` and `en` are complete for all V1.1 strings; the other 24 locales
+  currently fall back to English. Run `npm run translate -- en.json` (needs
+  `OPENAI_API_KEY`) to generate them.
+- **Preview bypass**: `PREVIEW_NO_AUTH=1` is a **local-only** convenience that forges
+  an OWNER session; it is inert in production by design. Remove it once a real test
+  account exists.
+- **Legacy code**: the original FormData `POST`/`PUT` admin band routes and the
+  deprecated `Band.album/template/musicSample` + `BandPlatform` are kept for the
+  render fallback — schedule a cleanup PR after the SmartLink migration is verified
+  in production.
+- **New env vars** to provision in production: Umami (`UMAMI_API_CLIENT_*` /
+  `UMAMI_API_KEY`, `NEXT_PUBLIC_UMAMI_SCRIPT_URL`) and the real Stripe keys
+  (`STRIPE_API_KEY`, `STRIPE_PRICE_ID_PRO`, `STRIPE_WEBHOOK_SECRET`).
