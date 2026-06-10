@@ -1,0 +1,300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Band {
+  id           Int            @id @default(autoincrement())
+  name         String
+  album        String?
+  coverImage   String?
+  createdAt    DateTime       @default(now())
+  deletedAt    DateTime?
+  domainname   String         @unique
+  musicSample  String?
+  trackingGTAG String?
+  trackingGTM  String?
+  trackingMeta String?
+  uuid         String         @unique @default(uuid())
+  ticketingURL String?
+  nextEventDate DateTime?
+  nextEventType EventType?
+  nextEventLocation String?
+  platforms    BandPlatform[]
+  users        UserBand[]
+  publishedAt  DateTime?
+  unpublishedAt DateTime?
+  template     String         @default("obsidian")
+  umamiWebsiteId String?      @unique
+  bio          String?
+  socials      Json?
+  smartLinks   SmartLink[]
+}
+
+model LabelMember {
+  id           Int      @id @default(autoincrement())
+  labelOwnerId String
+  email        String
+  userId       String?
+  createdAt    DateTime @default(now())
+  labelOwner   User     @relation("LabelOwner", fields: [labelOwnerId], references: [id])
+  user         User?    @relation("LabelMembership", fields: [userId], references: [id])
+
+  @@unique([labelOwnerId, email])
+  @@index([userId])
+  @@index([email])
+}
+
+model SmartLink {
+  id            Int                 @id @default(autoincrement())
+  bandId        Int
+  band          Band                @relation(fields: [bandId], references: [id])
+  title         String
+  slug          String
+  coverImage    String?
+  musicSample   String?
+  template      String              @default("obsidian")
+  publishedAt   DateTime?
+  unpublishedAt DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
+  uuid          String              @unique @default(uuid())
+  platforms     SmartLinkPlatform[]
+
+  @@unique([bandId, slug])
+  @@index([bandId])
+}
+
+model SmartLinkPlatform {
+  id          Int       @id @default(autoincrement())
+  smartLinkId Int
+  platformId  Int
+  customURL   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  smartLink   SmartLink @relation(fields: [smartLinkId], references: [id], onDelete: Cascade)
+  platform    Platform  @relation(fields: [platformId], references: [id])
+
+  @@unique([smartLinkId, platformId])
+}
+
+model Platform {
+  id        Int            @id @default(autoincrement())
+  name      String
+  shortname String         @unique
+  logo      String?
+  URL       String
+  createdAt DateTime       @default(now())
+  deletedAt DateTime?
+  uuid      String         @unique @default(uuid())
+  bands     BandPlatform[]
+  smartLinks SmartLinkPlatform[]
+}
+
+model BandPlatform {
+  id         Int      @id @default(autoincrement())
+  bandId     Int
+  platformId Int
+  customURL  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+  band       Band     @relation(fields: [bandId], references: [id])
+  platform   Platform @relation(fields: [platformId], references: [id])
+
+  @@unique([bandId, platformId])
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  providerAccountId String
+  access_token      String?
+  expires_at        Int?
+  id_token          String?
+  provider          String
+  refresh_token     String?
+  scope             String?
+  session_state     String?
+  token_type        String?
+  type              String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String          @id @default(cuid())
+  email         String?         @unique
+  name          String?
+  phone         String?
+  image         String?
+  emailVerified DateTime?
+  role          UserRole        @default(CUSTOMER)
+  uuid          String          @unique @default(uuid())
+  createdAt     DateTime        @default(now())
+  isAllowed     Boolean         @default(false)
+  updatedAt     DateTime        @updatedAt
+  accounts      Account[]
+  Authenticator Authenticator[]
+  sessions      Session[]
+  bands         UserBand[]
+  invites       UserInvite[]
+  authCode      String?
+  authCodeUpdatedAt DateTime?
+  tickets       SupportTicket[]
+  supportMessages SupportMessage[]
+  subscription  Subscription?
+  stripeCustomerId String?       @unique
+  labelTeam     LabelMember[]   @relation("LabelOwner")
+  labelMemberships LabelMember[] @relation("LabelMembership")
+
+  @@index([authCode, authCodeUpdatedAt])
+}
+
+model UserInvite {
+  id          Int      @id @default(autoincrement())
+  email       String
+  invitedById String
+  createdAt   DateTime @default(now())
+  invitedBy   User     @relation(fields: [invitedById], references: [id])
+
+  @@index([email])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model UserBand {
+  id        Int          @id @default(autoincrement())
+  userId    String
+  bandId    Int
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  role      UserBandRole @default(MEMBER)
+  band      Band         @relation(fields: [bandId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, bandId])
+}
+
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+}
+
+model Consent {
+  id        Int      @id @default(autoincrement())
+  privacyId String   @unique  // Add @unique here
+  analytics Boolean  @default(false)
+  marketing Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  READER
+  CUSTOMER
+}
+
+enum UserBandRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum EventType {
+  CONCERT
+  SHOW
+  FESTIVAL
+}
+
+model SupportTicket {
+  id        Int              @id @default(autoincrement())
+  subject   String
+  status    TicketStatus     @default(OPEN)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  messages  SupportMessage[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model SupportMessage {
+  id        Int            @id @default(autoincrement())
+  content   String
+  isAdmin   Boolean        @default(false)
+  readAt    DateTime?
+  ticketId  Int
+  ticket    SupportTicket  @relation(fields: [ticketId], references: [id])
+  authorId  String
+  author    User           @relation(fields: [authorId], references: [id])
+  createdAt DateTime       @default(now())
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  LABEL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}

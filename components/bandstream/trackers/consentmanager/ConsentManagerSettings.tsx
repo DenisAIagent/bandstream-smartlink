@@ -1,0 +1,98 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Switch } from "@/components/ui/switch";
+import { useTranslations } from 'next-intl';
+
+const CONSENT_COOKIE_NAME = 'privacy:consent';
+const CONSENT_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
+
+interface ConsentChoice {
+  analytics: boolean;
+  marketing: boolean;
+}
+
+export default function ConsentManagerSettings() {
+  const [consent, setConsent] = useState<ConsentChoice>({ analytics: false, marketing: false });
+  const t = useTranslations('privacy.consent');
+
+  useEffect(() => {
+    // Read current consent from cookie
+    const cookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith(CONSENT_COOKIE_NAME));
+    
+    if (cookie) {
+      const consentValue = cookie.split('=')[1];
+      try {
+        setConsent(JSON.parse(consentValue));
+      } catch (e) {
+        console.error('Error parsing consent cookie:', e);
+      }
+    }
+  }, []);
+
+  const updateConsent = async (key: keyof ConsentChoice, value: boolean) => {
+    const newConsent = { ...consent, [key]: value };
+    setConsent(newConsent);
+    
+    // Update cookie
+    document.cookie = `${CONSENT_COOKIE_NAME}=${JSON.stringify(newConsent)}; path=/; max-age=${CONSENT_COOKIE_MAX_AGE}`;
+    
+    // Update GTM dataLayer
+    if (typeof window !== 'undefined' && window.dataLayer) {
+      window.dataLayer.push({
+        'event': 'consent_update',
+        'analytics_storage': newConsent.analytics ? 'granted' : 'denied',
+        'ad_storage': newConsent.marketing ? 'granted' : 'denied'
+      });
+    }
+
+    // Update database
+    try {
+      const response = await fetch('/api/consent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newConsent),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update consent in database');
+      }
+    } catch (error) {
+      console.error('Error updating consent:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between space-x-2">
+        <div className="space-y-0.5">
+          <label className="text-sm font-medium">{t('analytics')}</label>
+          <p className="text-xs text-muted-foreground">
+            {t('analyticsDescription')}
+          </p>
+        </div>
+        <Switch
+          checked={consent.analytics}
+          onCheckedChange={(checked) => updateConsent('analytics', checked)}
+        />
+      </div>
+      
+      <div className="flex items-center justify-between space-x-2">
+        <div className="space-y-0.5">
+          <label className="text-sm font-medium">{t('marketing')}</label>
+          <p className="text-xs text-muted-foreground">
+            {t('marketingDescription')}
+          </p>
+        </div>
+        <Switch
+          checked={consent.marketing}
+          onCheckedChange={(checked) => updateConsent('marketing', checked)}
+        />
+      </div>
+    </div>
+  );
+}

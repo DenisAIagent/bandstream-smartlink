@@ -1,0 +1,34 @@
+name: Deploy to Preview
+
+on:
+  push:
+    branches:
+      - feature/admin-redesign
+
+jobs:
+  build-and-deploy:
+    runs-on: k8s
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg S3_PUBLIC_URL=https://staging.storage.cloud.band.stream \
+            --build-arg BUILD_COMMIT=${{ gitea.sha }} \
+            --build-arg BUILD_BRANCH=${{ gitea.ref_name }} \
+            --build-arg BUILD_ENV=preview \
+            --build-arg BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            --build-arg BUILD_RUN_ID=${{ gitea.run_id }} \
+            -t registry.bandteam.co/bandstream/bandstream-v2:preview \
+            .
+
+      - name: Push to registry
+        run: |
+          docker push registry.bandteam.co/bandstream/bandstream-v2:preview
+
+      # - name: Deploy
+      #   run: |
+      #     kubectl --kubeconfig /etc/kubeconfig/ionos.yaml rollout restart deployment/preview-webapp -n dev
+      #     kubectl --kubeconfig /etc/kubeconfig/ionos.yaml rollout status deployment/preview-webapp -n dev --timeout=120s

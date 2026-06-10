@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Band" ALTER COLUMN "album" DROP NOT NULL,
+ALTER COLUMN "coverImage" DROP NOT NULL,
+ALTER COLUMN "deletedAt" DROP NOT NULL;
