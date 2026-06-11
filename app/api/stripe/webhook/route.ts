@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import stripe from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import Stripe from "stripe";
+import { notifyCRM } from "@/lib/crm-events";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -88,6 +89,27 @@ function getPeriodDates(sub: Stripe.Subscription) {
   return { start, end };
 }
 
+
+/** Pousse le changement de plan vers la fiche client CRM (fire-and-forget). */
+async function notifyPlanChange(
+  userId: string,
+  plan: "FREE" | "PRO" | "LABEL",
+  previousPlan?: string | null
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true },
+  });
+  if (!user?.email) return;
+  await notifyCRM({
+    type: "plan_change",
+    email: user.email,
+    name: user.name,
+    plan,
+    previousPlan: previousPlan ?? null,
+  });
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
   if (!userId) {
@@ -123,6 +145,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       cancelAtPeriodEnd: false,
     },
   });
+
+  await notifyPlanChange(userId, "PRO");
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -142,6 +166,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const { start, end } = getPeriodDates(subscription);
 
+  const nextPlan = subscription.status === "canceled" ? "FREE" : "PRO";
   await prisma.subscription.update({
     where: { stripeSubscriptionId: subscription.id },
     data: {
@@ -149,9 +174,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       currentPeriodStart: start,
       currentPeriodEnd: end,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      plan: subscription.status === "canceled" ? "FREE" : "PRO",
+      plan: nextPlan,
     },
   });
+
+  if (nextPlan !== existingSub.plan) {
+    await notifyPlanChange(existingSub.userId, nextPlan, existingSub.plan);
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
@@ -169,6 +198,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       cancelAtPeriodEnd: false,
     },
   });
+
+  await notifyPlanChange(existingSub.userId, "FREE", existingSub.plan);
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {

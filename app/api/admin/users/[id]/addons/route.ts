@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/api-guard";
+import { notifyCRM } from "@/lib/crm-events";
 
 /**
  * Activation manuelle des add-ons par l'équipe band.stream (fiche client
@@ -29,7 +30,7 @@ export async function PATCH(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, subscription: { select: { plan: true } } },
+      select: { id: true, email: true, name: true, subscription: { select: { plan: true } } },
     });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -48,6 +49,15 @@ export async function PATCH(
       create: { userId, plan, status: "ACTIVE", shopAddon },
       update: { shopAddon },
     });
+
+    if (user.email) {
+      await notifyCRM({
+        type: "shop_addon",
+        email: user.email,
+        name: user.name,
+        enabled: subscription.shopAddon,
+      });
+    }
 
     return NextResponse.json({ shopAddon: subscription.shopAddon });
   } catch (error) {

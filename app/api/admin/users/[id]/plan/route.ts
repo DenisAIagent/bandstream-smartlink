@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth/api-guard";
+import { notifyCRM } from "@/lib/crm-events";
 
 const VALID_PLANS = ["FREE", "PRO", "LABEL"] as const;
 type Plan = (typeof VALID_PLANS)[number];
@@ -31,7 +32,7 @@ export async function PATCH(
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, email: true, name: true, subscription: { select: { plan: true } } },
     });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -51,6 +52,16 @@ export async function PATCH(
         status: "ACTIVE",
       },
     });
+
+    if (user.email) {
+      await notifyCRM({
+        type: "plan_change",
+        email: user.email,
+        name: user.name,
+        plan,
+        previousPlan: user.subscription?.plan ?? "FREE",
+      });
+    }
 
     return NextResponse.json({ plan: subscription.plan });
   } catch (error) {

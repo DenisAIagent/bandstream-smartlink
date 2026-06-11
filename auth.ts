@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "@/lib/prisma"
 import { sendSlackUserNotification } from '@/lib/slack/slack';
+import { notifyCRM } from '@/lib/crm-events';
 import Credentials from "next-auth/providers/credentials"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { resolveLabelMemberships } from "@/lib/services/label-team"
@@ -172,6 +173,13 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
 
       await sendSlackUserNotification({ 
         text: `:white_check_mark: New account created: ${message.user.name} (${message.user.email}) (${process.env.NODE_ENV})` 
+      });
+
+      // Fiche client CRM : création à l'inscription (fire-and-forget)
+      await notifyCRM({
+        type: 'signup',
+        email: params.user.email,
+        name: params.user.name,
       });
 
       const rootDomainUrl = process.env.ROOT_DOMAIN_URL || 'https://band.stream';

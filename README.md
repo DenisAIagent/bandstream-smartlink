@@ -698,3 +698,23 @@ a consumer mediator designation.
 - **Env**: app `CRM_PUBLIC_URL` (the origin serving the CRM front — `/api/v1`
   is reverse-proxied to its API) + `CRM_SSO_SECRET`; CRM `BANDSTREAM_SSO_SECRET`
   (identical). Local dev: app :3002, CRM API :3005, CRM front :5173.
+
+## Customer data sync (app → CRM)
+
+The CRM mirrors band.stream customers automatically — its integration contract
+(`integrations/bandstream-platform.ts`) was already specified, this implements it:
+
+- **Outbound events** (`lib/crm-events.ts`, fire-and-forget, never blocks the
+  app): `signup` (auth createUser), `plan_change` (admin PATCH + Stripe webhook
+  upgrade/downgrade/cancel), `shop_addon`. The CRM webhook
+  (`POST /api/v1/bandstream/webhook`, HMAC token, same shared secret) upserts
+  the `customers` row (source `bandstream`, plan mapped FREE/PRO/LABEL →
+  gratuit/artiste/label) and appends a timeline interaction.
+- **Platform API for the CRM** (`/api/crm/v1/*`, `Authorization: Bearer
+  CRM_API_KEY`): `ping`, `accounts/find?email=`, `accounts/:id/artists`,
+  `accounts/:id/smartlinks` — the CRM customer page reads artists & smartlinks
+  LIVE from the app (no copy). Configure URL + key in the CRM `/settings` page
+  (stored encrypted, `ADS_ENCRYPTION_KEY` required CRM-side).
+- **Billing tab**: the CRM reads subscriptions/invoices straight from Stripe by
+  customer email — give it a restricted read-only `STRIPE_SECRET_KEY`.
+- Env: app `CRM_API_URL` + `CRM_API_KEY`.
