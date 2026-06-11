@@ -31,6 +31,8 @@ yarn-error.log*
 
 # env files (can opt-in for commiting if needed)
 .env*
+# Update V1.1 — the secret-free example IS committed (documents required vars)
+!.env.example
 
 # vercel
 .vercel
