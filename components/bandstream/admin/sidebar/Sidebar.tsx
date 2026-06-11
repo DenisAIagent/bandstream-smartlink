@@ -1,4 +1,4 @@
-import { Guitar, Podcast, User, ChartNoAxesColumn, LifeBuoy, Store } from "lucide-react"
+import { Guitar, Podcast, User, ChartNoAxesColumn, LifeBuoy, Store, Headset } from "lucide-react"
 import Link from "next/link"
 import { getRolePermission } from "@/components/auth/RoleGuard"
 import {
@@ -116,6 +116,22 @@ export async function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* CRM interne (commercial + service client) — équipe band.stream
+                  uniquement, SSO sans relogin, nouvel onglet */}
+              {await getRolePermission("ADMIN") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <a href="/api/admin/crm/sso" target="_blank" rel="noopener">
+                      <Headset />
+                      <span>{ta('crm')}</span>
+                      <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {ta('crm_internal_tag')}
+                      </span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

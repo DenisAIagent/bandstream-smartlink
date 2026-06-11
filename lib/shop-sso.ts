@@ -31,18 +31,25 @@ function getSecret(): string {
   return secret;
 }
 
+/**
+ * Signe un jeton SSO court (60 s) avec un secret arbitraire — utilisé pour
+ * la boutique (SHOP_SSO_SECRET) et le CRM interne (CRM_SSO_SECRET).
+ */
+export function signSSOTokenWith(
+  secret: string,
+  data: Record<string, unknown>
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { ...data, iat: now, exp: now + SSO_TOKEN_TTL_SECONDS };
+  const body = b64url(Buffer.from(JSON.stringify(payload), "utf8"));
+  const sig = b64url(createHmac("sha256", secret).update(body).digest());
+  return `${body}.${sig}`;
+}
+
 export function signShopSSOToken(
   data: Pick<ShopSSOPayload, "email" | "name" | "plan">
 ): string {
-  const now = Math.floor(Date.now() / 1000);
-  const payload: ShopSSOPayload = {
-    ...data,
-    iat: now,
-    exp: now + SSO_TOKEN_TTL_SECONDS,
-  };
-  const body = b64url(Buffer.from(JSON.stringify(payload), "utf8"));
-  const sig = b64url(createHmac("sha256", getSecret()).update(body).digest());
-  return `${body}.${sig}`;
+  return signSSOTokenWith(getSecret(), data);
 }
 
 export function verifyShopSSOToken(token: string): ShopSSOPayload | null {

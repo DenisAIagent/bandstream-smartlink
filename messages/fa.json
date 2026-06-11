@@ -100,7 +100,9 @@
     "shop_addon_enabled": "Shop add-on enabled",
     "shop_addon_disabled": "Shop add-on disabled",
     "shop_addon_on": "Active",
-    "shop_addon_off": "Inactive"
+    "shop_addon_off": "Inactive",
+    "crm": "CRM",
+    "crm_internal_tag": "Internal"
   },
   "breadcrumb": {
     "admin": "مدیریت",

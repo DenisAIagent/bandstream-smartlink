@@ -670,3 +670,31 @@ Headline: the app ToS still describe the **private alpha** (no plans/pricing, no
 withdrawal right) and must be rewritten before open commercialization; the shop
 needs a publication director, digital-goods withdrawal exceptions, seller ToS and
 a consumer mediator designation.
+
+---
+---
+
+# Update V1.3
+
+> Appended after V1.2 — original content above is unchanged. V1.3 connects the
+> **internal CRM** (sales + customer service, separate Turbo monorepo in
+> `Logiciels internes/bandstream-crm`: Fastify API + Vite/React front).
+
+## Internal CRM bridge
+
+- **Team-only entry**: admin sidebar → "CRM" (Internal badge), visible to
+  OWNER/ADMIN roles only — this is an internal tool, not a client surface.
+- **SSO, no re-login**: `GET /api/admin/crm/sso` (requireAdmin) signs a
+  60-second HMAC token (`signSSOTokenWith`, shared secret `CRM_SSO_SECRET`)
+  and redirects to the CRM's `GET /api/v1/auth/sso/bandstream`, which:
+  - verifies the token (`BANDSTREAM_SSO_SECRET`, same value);
+  - **only signs in existing active agents** (no auto-provisioning — the
+    CRM's own RBAC/skills stay sovereign; unknown email → login page with
+    an explicit error);
+  - stores a hashed refresh token, sets the `refresh_token` httpOnly cookie
+    (same flow as its password login, audit-logged as `sso_login_bandstream`)
+    and redirects to the CRM front, whose `checkAuth()` bootstraps the
+    session — in a new tab.
+- **Env**: app `CRM_PUBLIC_URL` (the origin serving the CRM front — `/api/v1`
+  is reverse-proxied to its API) + `CRM_SSO_SECRET`; CRM `BANDSTREAM_SSO_SECRET`
+  (identical). Local dev: app :3002, CRM API :3005, CRM front :5173.

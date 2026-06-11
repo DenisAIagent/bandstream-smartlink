@@ -100,7 +100,9 @@
     "shop_addon_enabled": "Add-on Boutique activé",
     "shop_addon_disabled": "Add-on Boutique désactivé",
     "shop_addon_on": "Actif",
-    "shop_addon_off": "Inactif"
+    "shop_addon_off": "Inactif",
+    "crm": "CRM",
+    "crm_internal_tag": "Interne"
   },
   "breadcrumb": {
     "admin": "Gestion",
