@@ -614,3 +614,59 @@ GET        /api/admin/users/[id]/overview                   # client 360°
 - **New env vars** to provision in production: Umami (`UMAMI_API_CLIENT_*` /
   `UMAMI_API_KEY`, `NEXT_PUBLIC_UMAMI_SCRIPT_URL`) and the real Stripe keys
   (`STRIPE_API_KEY`, `STRIPE_PRICE_ID_PRO`, `STRIPE_WEBHOOK_SECRET`).
+
+---
+---
+
+# Update V1.2
+
+> Appended after V1.1 — original content above is unchanged. V1.2 adds the
+> **Merch Shop add-on** (SSO bridge to the separate `bandstream-shop` app) and a
+> **strict GDPR compliance pass** across both applications.
+
+## 1. Merch Shop add-on
+
+The shop (separate repo/app `bandstream-shop`, own database and sessions) is sold
+as a **paid add-on**, not included in any plan: **+€10/month on Pro (1 shop),
++€30/month on Label (up to 100 shops), Free not eligible**. The main app is the
+**source of truth** (`Subscription.shopAddon`), activated manually by the team.
+
+- **Admin space entry**: sidebar → "Shop" (ADD-ON badge) → `/admin/shop`.
+  Locked → upsell page with pricing; active → "Open the shop" button.
+- **Client 360° page**: new "Shop: Active/Inactive" selector next to Plan/Role
+  (`PATCH /api/admin/users/[id]/addons`, refuses FREE).
+- **SSO bridge — no re-login**: `GET /api/dashboard/shop/sso` signs a 60-second
+  HMAC token (`lib/shop-sso.ts`, shared secret `SHOP_SSO_SECRET`) and redirects to
+  the shop's `/sso/bandstream`, which verifies, syncs plan + add-on onto
+  `ShopArtist` (PRO→SOLO, LABEL→LABEL), opens its own session and lands on the
+  shop back-office — in a new tab. The shop's direct login keeps working.
+- Env (both sides): `SHOP_PUBLIC_URL`, `SHOP_SSO_SECRET` (identical value).
+
+## 2. GDPR compliance pass (strict)
+
+Full report: [`docs/RGPD-REVIEW.md`](docs/RGPD-REVIEW.md) · processors register:
+[`docs/SOUS-TRAITANTS.md`](docs/SOUS-TRAITANTS.md).
+
+- **Zero third-party scripts before consent** on fan pages: GTM/GA now mount via
+  `ConsentGatedTrackers` (network-verified: 0 external requests pre-consent).
+  Same on the shop: all pixels (GA4/Ads/Meta/TikTok/Pinterest/Snapchat) load only
+  after explicit accept.
+- **Data subject rights, self-serve**: account deletion (art. 17) and JSON export
+  (art. 20) in Dashboard → Settings → Privacy; same for shop fans on their
+  account page (anonymization keeps accounting data, art. 17.3.b).
+- **Retention**: `npm run purge:retention` (soft-deletes >30 d, consents >13 mo,
+  expired tokens/sessions) — wire as a daily cron in production. Shop:
+  `GET /api/cron/anonymize-orders` (orders >3 y, CRON_SECRET auth).
+- **Marketing opt-in at shop checkout** (Stripe `consent_collection`): abandoned-
+  cart emails and hashed audience exports are now **opt-in-only**.
+- **Minimization**: Slack notifications pseudonymized (`d•••@domain`); consent
+  settings panel fixed (kept `privacyId`, root-domain cookie, live revocation).
+
+## 3. Legal review
+
+CGU/CGV and legal notices of both apps were audited (no legal text modified —
+wording is a founder/lawyer decision): see [`docs/LEGAL-REVIEW.md`](docs/LEGAL-REVIEW.md).
+Headline: the app ToS still describe the **private alpha** (no plans/pricing, no
+withdrawal right) and must be rewritten before open commercialization; the shop
+needs a publication director, digital-goods withdrawal exceptions, seller ToS and
+a consumer mediator designation.

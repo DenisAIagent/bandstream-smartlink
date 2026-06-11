@@ -1,4 +1,14 @@
-# Handoff — Update V1.1
+# Handoff — Updates V1.1 & V1.2
+
+> **V1.2 (June 2026)** added on top of V1.1: the **Merch Shop add-on**
+> (`Subscription.shopAddon`, `/admin/shop`, SSO bridge `lib/shop-sso.ts` ↔
+> shop `/sso/bandstream`, env `SHOP_PUBLIC_URL`/`SHOP_SSO_SECRET`) and a
+> **strict GDPR pass** (consent-gated trackers, art. 17/20 self-serve rights,
+> `npm run purge:retention`, shop checkout opt-in, pseudonymized Slack).
+> See README "Update V1.2", `docs/RGPD-REVIEW.md`, `docs/SOUS-TRAITANTS.md`,
+> `docs/LEGAL-REVIEW.md`. Production checklist additions: wire the two
+> retention crons, archive processor DPAs, rewrite ToS before open launch.
+> The V1.1 handoff below is unchanged.
 
 > New document. It does not change anything written by the original author; it
 > summarizes the V1.1 work for the next developer picking up the repo. The
