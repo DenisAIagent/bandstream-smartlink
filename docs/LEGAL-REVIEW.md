@@ -83,6 +83,38 @@
 
 ---
 
+## Corrections appliquées (seconde passe) ✅
+
+Sur instruction (le point 1 — CGU app commerciales — reste volontairement en
+attente de l'avocat), les points 2, 3 et 4 ont été corrigés **en répliquant les
+blocs juridiques de la plateforme smartlink** (même société éditrice) :
+
+- **Boutique / LCEN** : `lib/legal/company.ts` enrichi (capital 1 020 €, TVA
+  FR 81939221438, **directeur de la publication Tachfin Khelil**, DPO,
+  **hébergeur IONOS** identique à l'app) ; mentions légales V2 affichant tout +
+  section **médiation** (même formulation que l'app) + lien CGU Vendeurs.
+- **Rétractation digital** : CGV template V2 — section **6 bis « Exceptions »**
+  (L221-28 3°/9°/13°), **formulaire type de rétractation en annexe**, plafond
+  livraison 30 jours (L216-1), mention TVA « art. 293 B », section communication
+  commerciale (opt-in), section médiation + juridiction consommateur. Au
+  checkout Stripe : **renonciation expresse affichée avant paiement** quand la
+  commande contient du digital (les deux flux — au passage le flux panier a
+  reçu le `consent_collection` opt-in qui lui manquait).
+- **CGU Vendeurs** : nouvelle page `/legal/cgu-vendeurs` (structure et blocs
+  des CGU smartlink) contractualisant la **commission (Pro 3 % min 0,30 €,
+  Label 0 %, frais Stripe à la charge du vendeur, évolution préavis 30 j)**,
+  l'add-on (+10/+30 €), les obligations vendeur (infos légales avant première
+  vente, contrefaçon, 30 jours, garanties), les rôles RGPD (vendeur =
+  responsable de traitement, BANDSTREAM = sous-traitant), la licence PI
+  technique, la suspension avec mise en demeure 7 j + recours, et la
+  responsabilité. **Liée à l'inscription vendeur** (case « J'accepte les CGU
+  Vendeurs »).
+
+Restent ouverts : la **désignation effective d'un médiateur** (action
+administrative, les deux apps utilisent la même mention en attendant), le
+**formulaire backoffice « infos légales vendeur » avec validation avant
+première vente**, et la CGU app v2 (point 1, en attente).
+
 ## Verdict et ordre d'attaque
 
 L'infrastructure légale est **sérieuse pour une alpha** (identités complètes,
