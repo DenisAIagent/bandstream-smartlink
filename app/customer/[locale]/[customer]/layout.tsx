@@ -4,9 +4,7 @@ import type { Metadata } from "next";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth"
 import { getBandDataFromDomainName } from "@/lib/queries/bands";
-import GoogleAnalyticsHead from "@/components/bandstream/trackers/head/GoogleAnalyticsHead";
-import GoogleTagManagerHead from "@/components/bandstream/trackers/head/GoogleTagManagerHead";
-import GoogleTagManagerBody from "@/components/bandstream/trackers/body/GoogleTagManagerBody";
+import ConsentGatedTrackers from "@/components/bandstream/trackers/ConsentGatedTrackers";
 import ConsentManager from "@/components/bandstream/trackers/consentmanager/ConsentManager";
 import UmamiTracker from "@/components/bandstream/trackers/UmamiTracker";
 import { Toaster } from "@/components/ui/toaster";
@@ -54,15 +52,15 @@ export default async function RootLayout({
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" href="/favicon.ico" />
-          {/* Corporate GTM — always present */}
-          <GoogleTagManagerHead GTM_ID={CORPORATE_GTM_ID} />
-          {/* Per-artist tracking — conditional */}
-          {requestedBand?.trackingGTAG && <GoogleAnalyticsHead GA_MEASUREMENT_ID={requestedBand?.trackingGTAG}/>}
-          {requestedBand?.trackingGTM && <GoogleTagManagerHead GTM_ID={requestedBand?.trackingGTM}/>}
         </head>
         <body>
-          <GoogleTagManagerBody GTM_ID={CORPORATE_GTM_ID} />
-          {requestedBand?.trackingGTM && <GoogleTagManagerBody GTM_ID={requestedBand?.trackingGTM}/>}
+          {/* RGPD : GTM corporate + trackers artiste chargés UNIQUEMENT après
+              consentement analytics (le chargement seul transmet l'IP à Google) */}
+          <ConsentGatedTrackers
+            corporateGtmId={CORPORATE_GTM_ID}
+            artistGtagId={requestedBand?.trackingGTAG}
+            artistGtmId={requestedBand?.trackingGTM}
+          />
           <div>
             <NextIntlClientProvider locale="en" messages={messages}>
               {children}

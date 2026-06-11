@@ -87,6 +87,13 @@ Données de navigation agrégées et anonymisées : pays, source de trafic, page
 
   Brevo (ex-Sendinblue)         E-mails transactionnels et commerciaux   France (UE)
 
+  Resend, Inc.                  E-mails transactionnels (connexion,      UE / États-Unis (CCT)
+                                bienvenue)
+
+  Slack Technologies (Salesforce) Notifications internes de connexion    UE / États-Unis (CCT)
+                                et de création de compte (adresse e-mail,
+                                nom) — suivi opérationnel par l'équipe
+
   Meta Platforms, Inc.          Ad Campaign                              UE / États-Unis (CCT)
 
   Google LLC (Ads)              Ad Campaign                              UE / États-Unis (CCT)

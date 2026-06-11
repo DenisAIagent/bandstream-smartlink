@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { CreditCard, Check, Loader2 } from "lucide-react";
 import LabelTeam from "@/components/bandstream/dashboard/LabelTeam";
+import PrivacyRights from "@/components/bandstream/dashboard/PrivacyRights";
 
 interface SubscriptionInfo {
   plan: "FREE" | "PRO" | "LABEL";
@@ -179,6 +180,9 @@ export default function SettingsPage() {
 
         {/* Équipe du label (visible uniquement pour les comptes LABEL) */}
         <LabelTeam />
+
+        {/* Confidentialité — droits RGPD (export art. 20, suppression art. 17) */}
+        <PrivacyRights />
       </div>
     </div>
   );

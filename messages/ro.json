@@ -398,7 +398,22 @@
     "feature_more_artists": "Până la 10 pagini de artist",
     "payment_error_title": "Payment temporarily unavailable",
     "payment_error_hint": "Please try again in a few minutes or contact us via Support.",
-    "upgrade_price": "€5/month, cancel anytime."
+    "upgrade_price": "€5/month, cancel anytime.",
+    "privacy_title": "Privacy & data",
+    "export_title": "Export my data",
+    "export_desc": "Download a copy of your data (profile, artists, smartlinks, team, support) as JSON.",
+    "export_cta": "Export (JSON)",
+    "delete_title": "Delete my account",
+    "delete_desc": "Your public pages go offline immediately; data is permanently erased within 30 days.",
+    "delete_cta": "Delete account",
+    "delete_confirm_title": "Permanently delete your account?",
+    "delete_confirm_desc": "This cannot be undone: artists, smartlinks, team and tickets will be removed. Type DELETE to confirm.",
+    "delete_confirm_placeholder": "DELETE",
+    "delete_confirm_word": "DELETE",
+    "delete_confirm_cta": "I confirm the deletion",
+    "delete_done": "Account deleted. Goodbye 👋",
+    "delete_error": "Deletion failed. Please contact support.",
+    "delete_internal_blocked": "An internal band.stream account cannot delete itself — ask another superadmin."
   },
   "support": {
     "ticket_list": "Tichete de asistență",

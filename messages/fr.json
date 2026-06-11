@@ -398,7 +398,22 @@
     "feature_more_artists": "Jusqu'à 10 pages artistes",
     "payment_error_title": "Paiement momentanément indisponible",
     "payment_error_hint": "Réessaie dans quelques minutes ou contacte-nous via le Support.",
-    "upgrade_price": "5 €/mois, annulable à tout moment."
+    "upgrade_price": "5 €/mois, annulable à tout moment.",
+    "privacy_title": "Confidentialité & données",
+    "export_title": "Exporter mes données",
+    "export_desc": "Téléchargez une copie de vos données (profil, artistes, smartlinks, équipe, support) au format JSON.",
+    "export_cta": "Exporter (JSON)",
+    "delete_title": "Supprimer mon compte",
+    "delete_desc": "Vos pages publiques sont mises hors ligne immédiatement ; les données sont définitivement effacées sous 30 jours.",
+    "delete_cta": "Supprimer le compte",
+    "delete_confirm_title": "Supprimer définitivement votre compte ?",
+    "delete_confirm_desc": "Cette action est irréversible : artistes, smartlinks, équipe et tickets seront supprimés. Tapez SUPPRIMER pour confirmer.",
+    "delete_confirm_placeholder": "SUPPRIMER",
+    "delete_confirm_word": "SUPPRIMER",
+    "delete_confirm_cta": "Je confirme la suppression",
+    "delete_done": "Compte supprimé. Au revoir 👋",
+    "delete_error": "La suppression a échoué. Contactez le support.",
+    "delete_internal_blocked": "Un compte interne band.stream ne peut pas s'auto-supprimer — demandez à un autre superadmin."
   },
   "support": {
     "ticket_list": "Tickets de support",

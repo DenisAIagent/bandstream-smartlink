@@ -87,6 +87,13 @@ Aggregated and anonymized browsing data: country, traffic source, pages visited,
 
   Brevo (formerly Sendinblue)    Transactional and marketing emails       France (EU)
 
+  Resend, Inc.                  Transactional e-mails (sign-in,          EU / United States (SCC)
+                                welcome)
+
+  Slack Technologies (Salesforce) Internal sign-in / account-creation    EU / United States (SCC)
+                                notifications (e-mail address, name) —
+                                operational monitoring by the team
+
   Meta Platforms, Inc.           Ad Campaign                              EU / United States (SCCs)
 
   Google LLC (Ads)               Ad Campaign                              EU / United States (SCCs)

@@ -8,7 +8,8 @@
     "start": "next start",
     "standalone": ".next/standalone/server.js",
     "lint": "next lint",
-    "translate": "node scripts/translate.js"
+    "translate": "node scripts/translate.js",
+    "purge:retention": "node scripts/purge-retention.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^1.6.0",
