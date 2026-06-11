@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "@/lib/prisma"
 import { sendSlackUserNotification } from '@/lib/slack/slack';
 import { notifyCRM } from '@/lib/crm-events';
+import { verifySSOTokenWith } from '@/lib/shop-sso';
 import Credentials from "next-auth/providers/credentials"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { resolveLabelMemberships } from "@/lib/services/label-team"
@@ -85,6 +86,40 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
         return user
       },
     }),
+    // Accès support depuis le CRM interne : un agent en call clique
+    // « Accéder au compte band.stream » sur une fiche client → jeton HMAC
+    // court (60 s, secret partagé CRM_SSO_SECRET) → session superadmin ici.
+    // Strict : l'agent doit déjà avoir un compte band.stream OWNER/ADMIN
+    // (même email que son compte agent CRM).
+    Credentials({
+      id: 'crm-sso',
+      credentials: { token: {} },
+      authorize: async (credentials) => {
+        const token = credentials?.token;
+        const secret = process.env.CRM_SSO_SECRET;
+        if (!secret || typeof token !== 'string') {
+          throw new Error('CRM SSO not configured');
+        }
+        const payload = verifySSOTokenWith<{
+          type?: string;
+          agent_email?: string;
+          exp: number;
+        }>(secret, token);
+        if (!payload || payload.type !== 'crm_admin_access' || !payload.agent_email) {
+          throw new Error('Invalid CRM SSO token');
+        }
+        const user = await prisma.user.findFirst({
+          where: {
+            email: { equals: payload.agent_email, mode: 'insensitive' },
+            role: { in: ['OWNER', 'ADMIN'] },
+          },
+        });
+        if (!user) {
+          throw new Error('No matching internal account');
+        }
+        return user;
+      },
+    }),
   ],
   callbacks: {
     async signIn({ user }) {
@@ -149,6 +184,20 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
       return session;
     },
     async redirect({ url, baseUrl }) {
+      // Cible interne explicite (ex. raccourci support du CRM → fiche client
+      // 360° /admin/users/:id) : suivie tant qu'elle reste dans l'espace
+      // admin de la même origine. Sinon, comportement historique : /admin.
+      try {
+        const target = new URL(url, baseUrl);
+        if (
+          target.origin === new URL(baseUrl).origin &&
+          /^\/([a-z]{2}\/)?admin(\/|$)/.test(target.pathname)
+        ) {
+          return target.pathname + target.search;
+        }
+      } catch {
+        // URL invalide → défaut historique
+      }
       return "/admin"
     }
   },

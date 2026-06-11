@@ -52,10 +52,14 @@ export function signShopSSOToken(
   return signSSOTokenWith(getSecret(), data);
 }
 
-export function verifyShopSSOToken(token: string): ShopSSOPayload | null {
+/** Vérifie un jeton SSO signé avec un secret arbitraire (miroir de signSSOTokenWith). */
+export function verifySSOTokenWith<T extends { exp?: number }>(
+  secret: string,
+  token: string
+): T | null {
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
-  const expected = createHmac("sha256", getSecret()).update(body).digest();
+  const expected = createHmac("sha256", secret).update(body).digest();
   const provided = Buffer.from(sig, "base64url");
   if (
     expected.length !== provided.length ||
@@ -66,7 +70,7 @@ export function verifyShopSSOToken(token: string): ShopSSOPayload | null {
   try {
     const payload = JSON.parse(
       Buffer.from(body, "base64url").toString("utf8")
-    ) as ShopSSOPayload;
+    ) as T;
     if (typeof payload.exp !== "number" || payload.exp < Date.now() / 1000) {
       return null;
     }
@@ -74,4 +78,8 @@ export function verifyShopSSOToken(token: string): ShopSSOPayload | null {
   } catch {
     return null;
   }
+}
+
+export function verifyShopSSOToken(token: string): ShopSSOPayload | null {
+  return verifySSOTokenWith<ShopSSOPayload>(getSecret(), token);
 }

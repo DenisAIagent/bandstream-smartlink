@@ -718,3 +718,16 @@ The CRM mirrors band.stream customers automatically — its integration contract
 - **Billing tab**: the CRM reads subscriptions/invoices straight from Stripe by
   customer email — give it a restricted read-only `STRIPE_SECRET_KEY`.
 - Env: app `CRM_API_URL` + `CRM_API_KEY`.
+
+## Support shortcut (CRM → app, reverse SSO)
+
+On a CRM customer page, the **"Accéder au compte band.stream"** button opens the
+customer's **client 360° page** (`/admin/users/:id`) in a new tab, signed in as
+the agent — for live support calls. Flow: the CRM signs a 60-second HMAC token
+(`agent_email` + `account_id`, shared secret) and audits the access
+(`bandstream_admin_access`); the app's `crm-sso` credentials provider verifies
+it and **requires an existing internal account (OWNER/ADMIN) with the same
+email as the agent** — no auto-provisioning, no access for non-team agents.
+The NextAuth redirect callback follows explicit same-origin `/admin/...`
+targets (historic default `/admin` otherwise). Requires `AUTH_URL` to be set
+in production for correct redirect origins.
