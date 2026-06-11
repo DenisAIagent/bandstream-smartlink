@@ -277,6 +277,12 @@ model Subscription {
   stripeSubscriptionId String?            @unique
   stripePriceId        String?
   plan                 SubscriptionPlan   @default(FREE)
+  /// Add-on payant « Boutique merch » — non inclus dans Pro/Label.
+  /// +10 €/mois (Pro, 1 boutique) · +30 €/mois (Label, 100 boutiques).
+  /// FREE non éligible. Activation manuelle par l'équipe (fiche client 360).
+  /// L'app principale est la source de vérité ; la boutique se synchronise
+  /// au SSO (cf. bandstream-shop/lib/billing/plan.ts).
+  shopAddon            Boolean            @default(false)
   status               SubscriptionStatus @default(ACTIVE)
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?

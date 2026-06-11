@@ -31,6 +31,7 @@ interface Overview {
   createdAt: string;
   stripeCustomerId: string | null;
   plan: Plan;
+  shopAddon: boolean;
   artists: {
     id: number;
     name: string;
@@ -79,6 +80,27 @@ export default function UserOverview({ userId }: { userId: string }) {
       });
       if (!res.ok) throw new Error('plan failed');
       toast({ title: `Plan ${plan} activé`, duration: 2000 });
+    } catch {
+      setData(previous);
+      toast({ title: ta('error'), variant: 'destructive' });
+    }
+  }
+
+  async function changeShopAddon(shopAddon: boolean) {
+    if (!data) return;
+    const previous = data;
+    setData({ ...data, shopAddon });
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/addons`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopAddon }),
+      });
+      if (!res.ok) throw new Error('addon failed');
+      toast({
+        title: shopAddon ? ta('shop_addon_enabled') : ta('shop_addon_disabled'),
+        duration: 2000,
+      });
     } catch {
       setData(previous);
       toast({ title: ta('error'), variant: 'destructive' });
@@ -166,6 +188,22 @@ export default function UserOverview({ userId }: { userId: string }) {
                   <SelectItem value="FREE">Free</SelectItem>
                   <SelectItem value="PRO">Pro</SelectItem>
                   <SelectItem value="LABEL">Label</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">{ta('shop')}</p>
+              <Select
+                value={data.shopAddon ? 'ON' : 'OFF'}
+                onValueChange={(v) => changeShopAddon(v === 'ON')}
+                disabled={data.plan === 'FREE'}
+              >
+                <SelectTrigger className="w-28 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OFF">{ta('shop_addon_off')}</SelectItem>
+                  <SelectItem value="ON">{ta('shop_addon_on')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

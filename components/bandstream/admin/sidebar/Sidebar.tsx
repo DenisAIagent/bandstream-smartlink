@@ -1,4 +1,4 @@
-import { Guitar, Podcast, User, ChartNoAxesColumn, LifeBuoy } from "lucide-react"
+import { Guitar, Podcast, User, ChartNoAxesColumn, LifeBuoy, Store } from "lucide-react"
 import Link from "next/link"
 import { getRolePermission } from "@/components/auth/RoleGuard"
 import {
@@ -113,6 +113,18 @@ export async function AppSidebar() {
                   <Link href={lp("/dashboard")}>
                     <ChartNoAxesColumn />
                     <span>{ta('stats')}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href={lp("/admin/shop")}>
+                    <Store />
+                    <span>{ta('shop')}</span>
+                    <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {ta('shop_addon_tag')}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

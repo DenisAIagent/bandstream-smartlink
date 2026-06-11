@@ -30,7 +30,7 @@ export async function GET(
         createdAt: true,
         stripeCustomerId: true,
         subscription: {
-          select: { plan: true, status: true, currentPeriodEnd: true },
+          select: { plan: true, status: true, currentPeriodEnd: true, shopAddon: true },
         },
         bands: {
           where: { band: { deletedAt: null } },
@@ -78,6 +78,9 @@ export async function GET(
         subscription && subscription.status === "ACTIVE"
           ? subscription.plan
           : "FREE",
+      shopAddon: Boolean(
+        subscription?.shopAddon && subscription.status === "ACTIVE"
+      ),
       subscription,
       artists: bands.map(({ role, band }) => ({
         id: band.id,
