@@ -33,24 +33,26 @@
 
 ---
 
-## 2. Décisions produit / juridiques restantes (à arbitrer) ⚠️
+## 2. Traité en seconde passe ✅ (ex-priorités hautes)
 
-Priorité haute :
-1. **Boutique — opt-in marketing au checkout** (art. 6/21, ePrivacy) : la relance panier
-   abandonné (avec code promo) et l'export d'emails hashés vers Google Customer Match /
-   Meta Custom Audiences (`/api/customers/export?format=hashed`) reposent sur une base
-   « intérêt légitime » fragile. Décision : ajouter une case opt-in au checkout Stripe
-   (custom field) et filtrer relances + exports sur ce flag, ou assumer l'intérêt
-   légitime documenté + opt-out 1 clic dans chaque email.
-2. **Boutique — droits des acheteurs (fans)** : pas d'interface de suppression/export
-   pour les acheteurs (adresses de livraison stockées en JSON sans purge). Décision :
-   page `/account/data-rights` + anonymisation des commandes > 3 ans (garantie légale),
-   cron de purge analogue à celui de l'app.
-3. **DPA sous-traitants** : vérifier que les DPA Slack, Resend, Scaleway, Stripe, Umami
-   sont signés/archivés (art. 28). Slack : envisager de pseudonymiser les notifications
-   (ID interne plutôt qu'email en clair) — décision produit.
+1. **Boutique — opt-in marketing au checkout** : case native Stripe
+   (`consent_collection: { promotions: "auto" }`) ; `Order.marketingOptIn` stocké par
+   les deux handlers du webhook ; **relance panier abandonné envoyée uniquement aux
+   fans opt-in** (sinon stampée sans envoi) ; **export d'audiences hashées filtré
+   opt-in** (`app/api/customers/export`).
+2. **Boutique — droits des acheteurs** : carte « Mes données (RGPD) » sur le compte
+   fan (magic-link = identité vérifiée) — export JSON (`/api/account/export`) et
+   effacement (`data-rights-actions.ts` : commandes anonymisées, adresses effacées,
+   téléchargements/paniers supprimés, compte supprimé ; montants conservés art.
+   17.3.b). **Cron `/api/cron/anonymize-orders`** (secret CRON_SECRET, testé) :
+   anonymisation des commandes > 3 ans + purge sessions fans et compteurs rate-limit
+   expirés.
+3. **DPA / Slack** : notifications Slack **pseudonymisées à la source**
+   (`d•••@domaine`, `lib/slack/slack.ts`) ; **registre des sous-traitants**
+   `docs/SOUS-TRAITANTS.md` (art. 28/30) listant chaque prestataire, les données
+   réellement transmises et la case DPA à archiver par l'équipe.
 
-Priorité moyenne :
+## 2bis. Décisions restantes (priorité moyenne/basse) ⚠️
 4. **Cron de purge en production** : brancher `npm run purge:retention` (app) en tâche
    quotidienne (Railway/K8s CronJob). Le script existe, il n'est pas encore planifié.
 5. **Demande d'avis post-livraison (boutique)** : documenter la base légale (relation
