@@ -1,3 +1,8 @@
+> 📘 **Document de référence : [FONCTIONNEMENT.md](https://github.com/DenisAIagent/bandstream-ecosystem/blob/main/FONCTIONNEMENT.md)**
+> (repo `bandstream-ecosystem`). Cette application fait partie de l'écosystème
+> band.stream — lisez d'abord le fonctionnement global ; ce README ne couvre
+> que la technique de cette app.
+
 # band.stream
 
 **band.stream** is a smart-link platform for musicians and bands. Each artist gets a personalized landing page at `<artist>.band.stream` that aggregates streaming platform links (Spotify, Apple Music, Deezer, YouTube, etc.), displays cover art, plays audio previews, and promotes upcoming events with ticketing links.
