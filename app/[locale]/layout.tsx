@@ -6,8 +6,8 @@ import {notFound} from 'next/navigation';
 
 import { auth } from "@/auth"
 import { Toaster } from "@/components/ui/toaster"
-import GoogleTagManagerHead from "@/components/bandstream/trackers/head/GoogleTagManagerHead";
-import GoogleTagManagerBody from "@/components/bandstream/trackers/body/GoogleTagManagerBody";
+import ConsentGatedTrackers from "@/components/bandstream/trackers/ConsentGatedTrackers";
+import ConsentManager from "@/components/bandstream/trackers/consentmanager/ConsentManager";
 
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
@@ -50,13 +50,16 @@ export default async function RootLayout({
       <html lang={locale} className={poppins.variable}>
         <head>
           <meta name="facebook-domain-verification" content="4vmoy8vx2645tlm3d96lzdgsy7kctb" />
-          <GoogleTagManagerHead GTM_ID={CORPORATE_GTM_ID} />
         </head>
         <body>
-          <GoogleTagManagerBody GTM_ID={CORPORATE_GTM_ID} />
+          {/* RGPD/ePrivacy (art. 82 LIL, lignes directrices CEPD) : le conteneur
+              GTM corporate n'est chargé qu'APRÈS consentement analytics — son
+              simple chargement transmettrait l'IP du visiteur à Google. */}
+          <ConsentGatedTrackers corporateGtmId={CORPORATE_GTM_ID} />
           <NextIntlClientProvider locale={locale} messages={messages}>
             {children}
             <Toaster />
+            <ConsentManager />
           </NextIntlClientProvider>
         </body>
       </html>

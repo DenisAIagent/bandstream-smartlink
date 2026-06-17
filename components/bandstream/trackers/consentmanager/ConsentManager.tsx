@@ -34,7 +34,8 @@ interface ConsentChoice {
 }
 
 const generateUniqueId = () => {
-  return 'consent_' + Math.random().toString(36).substring(2, 15);
+  const uuid = globalThis.crypto?.randomUUID?.();
+  return 'consent_' + (uuid ?? Math.random().toString(36).substring(2, 15));
 };
 
 interface GtagConsentEvent {

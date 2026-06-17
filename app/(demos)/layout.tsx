@@ -1,7 +1,6 @@
 import "@/app/globals.css";
 import { poppins } from "@/lib/fonts";
-import GoogleTagManagerHead from "@/components/bandstream/trackers/head/GoogleTagManagerHead";
-import GoogleTagManagerBody from "@/components/bandstream/trackers/body/GoogleTagManagerBody";
+import ConsentGatedTrackers from "@/components/bandstream/trackers/ConsentGatedTrackers";
 
 // Corporate GTM container — #66
 const CORPORATE_GTM_ID = 'GTM-N9SS822J';
@@ -18,11 +17,12 @@ export const metadata = {
 export default function DemosLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={poppins.variable}>
-      <head>
-        <GoogleTagManagerHead GTM_ID={CORPORATE_GTM_ID} />
-      </head>
+      <head />
       <body>
-        <GoogleTagManagerBody GTM_ID={CORPORATE_GTM_ID} />
+        {/* RGPD/ePrivacy : routes de prévisualisation interne. Le GTM corporate
+            reste gaté — chargé uniquement si un consentement analytics existe
+            déjà sur le domaine. Aucun appel Google avant consentement. */}
+        <ConsentGatedTrackers corporateGtmId={CORPORATE_GTM_ID} />
         {children}
       </body>
     </html>
