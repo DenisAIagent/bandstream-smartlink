@@ -219,6 +219,8 @@ And set `ROOT_DOMAIN=band.stream` in your `.env`.
 | `INTERNAL_API_TOKEN` | Token for internal API calls (welcome email) | |
 | `ADMIN_PASSWORD` | Admin password (legacy) | |
 | `OPENAI_API_KEY` | OpenAI key for translation script | |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL` | Umami script origin (allow-listed in the CSP) | `https://umami.example.com/script.js` |
+| `CSP_ENFORCE` | `true` = blocking `Content-Security-Policy`; otherwise served as `Content-Security-Policy-Report-Only` (default) | `false` |
 | `BUILD_ID` | Custom build identifier (optional) | `development` |
 | `PORT` | Server port (optional, default 3000) | `3000` |
 
@@ -320,9 +322,15 @@ User sign-in attempts and new account creations trigger Slack webhook notificati
 
 Per-band tracking is supported via `trackingGTAG`, `trackingGTM`, and `trackingMeta` fields on the Band model. Components in `components/bandstream/trackers/` inject the relevant scripts.
 
+**Consent gating (ePrivacy / art. 82 LIL):** no Google script — corporate GTM included — is loaded before analytics consent. The corporate container is rendered through `ConsentGatedTrackers` (used on every public layer: `[locale]`, `(demos)`, and the public artist pages), which mounts the GTM script only once consent is granted (and reacts live to revocation). Loading `gtm.js`/`gtag.js` itself would transmit the visitor IP to Google, so it must stay gated.
+
 ### Cookie Consent
 
-A consent manager (`components/bandstream/trackers/consentmanager/`) handles GDPR-compliant cookie consent. Consent records (analytics/marketing flags) are stored in the `Consent` database table.
+A consent manager (`components/bandstream/trackers/consentmanager/`) handles GDPR-compliant cookie consent (Google Consent Mode v2 default `denied`, symmetric accept/refuse). Consent records (analytics/marketing flags) are stored in the `Consent` database table via `POST /api/consent`.
+
+### Content-Security-Policy
+
+A CSP is emitted from `next.config.ts`, served as `Content-Security-Policy-Report-Only` by default (never blocking) and switched to a blocking `Content-Security-Policy` with `CSP_ENFORCE=true`. Script/connect sources are derived from the configured origins (Google, Umami via `NEXT_PUBLIC_UMAMI_SCRIPT_URL`, S3, Stripe). Next hardening step: per-request nonce to drop `'unsafe-inline'`.
 
 ---
 
