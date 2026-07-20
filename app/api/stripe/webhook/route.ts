@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(charge);
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -166,7 +172,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const { start, end } = getPeriodDates(subscription);
 
-  const nextPlan = subscription.status === "canceled" ? "FREE" : "PRO";
+  // Audit APP-05 : seuls les statuts réellement payants conservent PRO.
+  // past_due = période de grâce (Stripe retente le prélèvement) ; si les
+  // retentatives échouent, Stripe passe à unpaid/canceled → FREE. Avant ce
+  // correctif, unpaid gardait PRO indéfiniment.
+  const PRO_STATUSES = new Set(["active", "trialing", "past_due"]);
+  const nextPlan = PRO_STATUSES.has(subscription.status) ? "PRO" : "FREE";
   await prisma.subscription.update({
     where: { stripeSubscriptionId: subscription.id },
     data: {
@@ -195,6 +206,42 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     data: {
       status: "CANCELED",
       plan: "FREE",
+      cancelAtPeriodEnd: false,
+    },
+  });
+
+  await notifyPlanChange(existingSub.userId, "FREE", existingSub.plan);
+}
+
+/**
+ * Remboursement TOTAL d'un paiement d'abonnement → retour au plan FREE
+ * (audit APP-05 : un remboursement manuel dans Stripe ne rétrogradait pas
+ * l'utilisateur, qui conservait PRO indéfiniment). Les remboursements
+ * partiels ne changent rien. Les disputes (chargeback) restent à traiter
+ * séparément (risque résiduel documenté).
+ */
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  if (!charge.refunded) return; // remboursement partiel → pas de downgrade
+
+  const invoiceRef = charge.invoice;
+  const invoiceId = typeof invoiceRef === "string" ? invoiceRef : invoiceRef?.id;
+  if (!invoiceId) return;
+
+  const invoice = await stripe.invoices.retrieve(invoiceId);
+  const subRef = (invoice as unknown as { subscription?: string | { id: string } | null }).subscription;
+  const subscriptionId = typeof subRef === "string" ? subRef : subRef?.id;
+  if (!subscriptionId) return;
+
+  const existingSub = await prisma.subscription.findUnique({
+    where: { stripeSubscriptionId: subscriptionId },
+  });
+  if (!existingSub || existingSub.plan === "FREE") return;
+
+  await prisma.subscription.update({
+    where: { stripeSubscriptionId: subscriptionId },
+    data: {
+      plan: "FREE",
+      status: "CANCELED",
       cancelAtPeriodEnd: false,
     },
   });
