@@ -5,6 +5,8 @@ import { requireAuth } from "@/lib/auth/api-guard";
 import { verifyBandOwnership as verifyOwnership } from "@/lib/auth/ownership";
 import { isValidTemplateId } from "@/components/bandstream/landingpages/templates/shared";
 import { isValidDomainname } from "@/lib/services/band-create";
+import { findInvalidTrackingField } from "@/lib/tracking/tracking-ids";
+import { isSafeCustomURL } from "@/lib/services/band-platforms";
 import { z } from "zod";
 
 const socialUrl = z
@@ -126,6 +128,31 @@ export async function PUT(
         return NextResponse.json({ error: "Invalid socials" }, { status: 400 });
       }
       filtered.socials = socials.data;
+    }
+
+    // ticketingURL est rendue en `href` sur les pages publiques : refuser
+    // tout schéma dangereux (javascript:, data:…). Audit APP-07.
+    if ("ticketingURL" in filtered && filtered.ticketingURL) {
+      if (
+        typeof filtered.ticketingURL !== "string" ||
+        !isSafeCustomURL(filtered.ticketingURL)
+      ) {
+        return NextResponse.json(
+          { error: "invalid_ticketingURL" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Identifiants de tracking : format canonique strict (anti-XSS stockée —
+    // ces valeurs sont interpolées dans des scripts inline sur les pages
+    // publiques). Audit APP-01.
+    const invalidTracking = findInvalidTrackingField(filtered);
+    if (invalidTracking) {
+      return NextResponse.json(
+        { error: `invalid_${invalidTracking}` },
+        { status: 400 }
+      );
     }
 
     const updatedBand = await prisma.band.update({

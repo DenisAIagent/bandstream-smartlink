@@ -7,6 +7,8 @@ import { uploadFile } from '@/lib/storage';
 import prisma from '@/lib/prisma';
 import { BandWithPlatforms } from '@/types/bandstream'; // Adjust the path as necessary
 import { isValidDomainname } from '@/lib/services/band-create';
+import { isSafeCustomURL } from '@/lib/services/band-platforms';
+import { findInvalidTrackingField } from '@/lib/tracking/tracking-ids';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -83,6 +85,13 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
         const safeDomain = (domainname ?? '').trim().toLowerCase();
         if (!isValidDomainname(safeDomain)) {
             return NextResponse.json({ error: 'invalid_domainname' }, { status: 400 });
+        }
+
+        // Identifiants de tracking : format canonique strict (anti-XSS
+        // stockée — interpolés dans des scripts inline). Audit APP-01.
+        const invalidTracking = findInvalidTrackingField({ trackingGTM, trackingGTAG, trackingMeta });
+        if (invalidTracking) {
+            return NextResponse.json({ error: `invalid_${invalidTracking}` }, { status: 400 });
         }
 
         // Update band details
@@ -217,6 +226,21 @@ export async function PATCH(
                 return NextResponse.json({ error: 'invalid_domainname' }, { status: 400 });
             }
             filtered.domainname = dn;
+        }
+
+        // ticketingURL est rendue en `href` sur les pages publiques : refuser
+        // tout schéma dangereux (javascript:, data:…). Audit APP-07.
+        if ('ticketingURL' in filtered && filtered.ticketingURL) {
+            if (typeof filtered.ticketingURL !== 'string' || !isSafeCustomURL(filtered.ticketingURL)) {
+                return NextResponse.json({ error: 'invalid_ticketingURL' }, { status: 400 });
+            }
+        }
+
+        // Identifiants de tracking : format canonique strict (anti-XSS
+        // stockée — interpolés dans des scripts inline). Audit APP-01.
+        const invalidTracking = findInvalidTrackingField(filtered);
+        if (invalidTracking) {
+            return NextResponse.json({ error: `invalid_${invalidTracking}` }, { status: 400 });
         }
 
         const updatedBand = await prisma.band.update({

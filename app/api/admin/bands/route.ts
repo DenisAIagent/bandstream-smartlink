@@ -8,6 +8,7 @@ import { auth } from '@/auth';
 import sharp from 'sharp';
 import { hasBandStreamPermission, BandStreamUserRole } from "@/lib/rbac/roles"
 import { isValidDomainname } from "@/lib/services/band-create"
+import { findInvalidTrackingField } from "@/lib/tracking/tracking-ids"
 
 export async function GET() {
   const { error: authError } = await requireAdmin(); if (authError) return authError;
@@ -89,6 +90,13 @@ export async function POST(req: NextRequest) {
         const safeDomain = (domainname ?? '').trim().toLowerCase();
         if (!isValidDomainname(safeDomain)) {
             return NextResponse.json({ error: 'invalid_domainname' }, { status: 400 });
+        }
+
+        // Identifiants de tracking : format canonique strict (anti-XSS
+        // stockée — interpolés dans des scripts inline). Audit APP-01.
+        const invalidTracking = findInvalidTrackingField({ trackingGTM, trackingGTAG, trackingMeta });
+        if (invalidTracking) {
+            return NextResponse.json({ error: `invalid_${invalidTracking}` }, { status: 400 });
         }
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(imageFile.type)) {
             return NextResponse.json({ error: 'Invalid image format' }, { status: 400 });
