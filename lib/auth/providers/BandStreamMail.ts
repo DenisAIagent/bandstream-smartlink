@@ -3,7 +3,15 @@ export async function sendVerificationRequest({ identifier: email }: { identifie
   const rootDomainUrl = process.env.ROOT_DOMAIN_URL || 'https://band.stream';
   const internalApiToken = process.env.INTERNAL_API_TOKEN;
 
-  await fetch(`${rootDomainUrl}/api/mails/send-welcome-mail?internalApiToken=${internalApiToken}&username=${email}&email=${email}`);
+  // Secret en en-tête Bearer (jamais en query string) — audit APP-08.
+  await fetch(`${rootDomainUrl}/api/mails/send-welcome-mail`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(internalApiToken ? { Authorization: `Bearer ${internalApiToken}` } : {}),
+    },
+    body: JSON.stringify({ username: email, email }),
+  });
 }
 
 

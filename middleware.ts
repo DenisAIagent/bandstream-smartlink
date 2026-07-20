@@ -30,8 +30,9 @@ function extractCustomer(hostname: string): string | null {
     // Remove port if present
     const host = hostname.split(':')[0];
 
-    // Must contain our root domain
-    if (!host.endsWith(ROOT_DOMAIN)) {
+    // Doit être exactement le domaine racine ou un sous-domaine direct
+    // (le point évite les domaines suffixes malveillants : evilband.stream).
+    if (host !== ROOT_DOMAIN && !host.endsWith(`.${ROOT_DOMAIN}`)) {
         return null;
     }
 
@@ -206,6 +207,11 @@ export const config = {
         "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|apple-icon|svg|fonts|images).*)",
         "/(fr|en|de|es|it|pt|ja|zh|ar|hi|bn|ru|tr|ko|vi|id|th|fa|pl|nl|ur|ms|uk|ro|el|is)/admin/:path*",
         "/(fr|en|de|es|it|pt|ja|zh|ar|hi|bn|ru|tr|ko|vi|id|th|fa|pl|nl|ur|ms|uk|ro|el|is)/dashboard/:path*",
+        // Backstop d'authentification sur l'API protégée : sans ces entrées le
+        // middleware ne s'exécutait JAMAIS sur /api/* (le motif ci-dessus les
+        // exclut) et le garde-fou 401 était du code mort — audit APP-06.
+        "/api/admin/:path*",
+        "/api/dashboard/:path*",
         "/",
         "/(fr|en|de|es|it|pt|ja|zh|ar|hi|bn|ru|tr|ko|vi|id|th|fa|pl|nl|ur|ms|uk|ro|el|is)/:path*"
     ],
