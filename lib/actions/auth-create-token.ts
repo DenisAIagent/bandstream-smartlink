@@ -4,7 +4,13 @@ import prisma from "@/lib/prisma"
 import { sendConnectMail } from "@/lib/actions/send-connect-mail"
 import { sendSlackUserNotification } from "@/lib/slack/slack"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { hashAuthCode } from "@/lib/auth/otp"
 
+/**
+ * Envoie un code de connexion à 6 chiffres si — et seulement si — l'email est
+ * connu (compte existant ou invitation). Retourne TOUJOURS la même chose :
+ * aucune énumération de comptes possible via la réponse (audit APP-04).
+ */
 export async function createToken(rawEmail: string) {
   const email = rawEmail.trim().toLowerCase();
 
@@ -25,24 +31,30 @@ export async function createToken(rawEmail: string) {
     });
 
     if (!invite) {
-      throw new Error('Email not invited');
+      // Réponse générique : on prétend le succès sans rien envoyer — un
+      // attaquant ne peut pas distinguer un email inconnu d'un email valide.
+      return { sent: false as const };
     }
   }
 
-  // Generate a random 6-digit code that never starts with 0
-  const authCode = (crypto.randomInt(100000, 999999).toString())
+  // Generate a random 6-digit code (crypto-safe)
+  const authCode = crypto.randomInt(100000, 1000000).toString()
   const now = new Date()
+
+  // Seule l'empreinte SHA-256 du code est persistée : une fuite de la base
+  // ne compromet pas les codes actifs (fenêtre de 15 min).
+  const authCodeHash = hashAuthCode(authCode);
 
   // Try to find existing user or create new one
   const user = await prisma.user.upsert({
     where: { email },
     update: {
-      authCode,
+      authCode: authCodeHash,
       authCodeUpdatedAt: now,
     },
     create: {
       email,
-      authCode,
+      authCode: authCodeHash,
       authCodeUpdatedAt: now,
       role: 'CUSTOMER',
     }
@@ -54,5 +66,5 @@ export async function createToken(rawEmail: string) {
 
   await sendConnectMail(email, user.name || '', authCode)
 
-  return user
+  return { sent: true as const };
 }

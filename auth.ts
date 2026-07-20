@@ -8,16 +8,17 @@ import { verifySSOTokenWith, SSO_AUD } from '@/lib/shop-sso';
 import Credentials from "next-auth/providers/credentials"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { resolveLabelMemberships } from "@/lib/services/label-team"
+import { hashAuthCode } from "@/lib/auth/otp"
 
 const acceptOnlyInvitedUsers = true;
 
-async function getUserFromDb(email: unknown, authCode: string) {
+async function getUserFromDb(email: unknown, authCodeHash: string) {
   if (!email || typeof email !== 'string') return null;
 
   return await prisma.user.findFirst({
     where: {
       email: { equals: email.trim().toLowerCase(), mode: 'insensitive' },
-      authCode: authCode,
+      authCode: authCodeHash,
       authCodeUpdatedAt: {
         gte: new Date(Date.now() - 15 * 60 * 1000) // 15 minutes ago
       }
@@ -25,21 +26,25 @@ async function getUserFromDb(email: unknown, authCode: string) {
   });
 }
 
-async function clearAuthCode(email: string) {
-  if (!email) return null;
-
-  const user = await prisma.user.findFirst({
-    where: { email: { equals: email.trim().toLowerCase(), mode: 'insensitive' } }
-  });
-  if (!user) return null;
-
-  return await prisma.user.update({
-    where: { id: user.id },
+/**
+ * Consomme le code OTP de façon atomique (audit APP-04) : l'UPDATE ne porte
+ * que si le code est encore présent — deux requêtes concurrentes avec le
+ * même code ne peuvent donc pas aboutir toutes les deux (race condition).
+ * Retourne true si la consommation a eu lieu.
+ */
+async function consumeAuthCode(userId: string, authCodeHash: string): Promise<boolean> {
+  const result = await prisma.user.updateMany({
+    where: {
+      id: userId,
+      authCode: authCodeHash,
+      authCodeUpdatedAt: { gte: new Date(Date.now() - 15 * 60 * 1000) }
+    },
     data: {
       authCode: null,
       authCodeUpdatedAt: null
     }
   });
+  return result.count === 1;
 }
 
 
@@ -70,18 +75,22 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
         }
 
         let user = null
-        const authCode = credentials.authCode
+        // Le code est comparé par empreinte SHA-256 (stockage hashé — APP-04)
+        const authCodeHash = hashAuthCode(credentials.authCode)
 
         // logic to verify if the user exists
-        user = await getUserFromDb(credentials.email, authCode)
- 
+        user = await getUserFromDb(credentials.email, authCodeHash)
+
         if (!user) {
           // No user found, so this is their first attempt to login
           // Optionally, this is also the place you could do a user registration
           throw new Error("Invalid credentials.")
         }
- 
-        await clearAuthCode(credentials.email as string)
+
+        // Consommation atomique : rejouer le même code en concurrence échoue.
+        if (!(await consumeAuthCode(user.id, authCodeHash))) {
+          throw new Error("Invalid credentials.")
+        }
         // return user object with their profile data
         return user
       },
