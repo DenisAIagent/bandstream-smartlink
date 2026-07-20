@@ -108,9 +108,9 @@ export default function ArtistHub({
 
       <footer className="mt-auto pt-12 text-[11px] text-white/25">
         Powered by{' '}
-        <a href="/" className="font-semibold hover:text-white/60 transition-colors">
+        <Link href="/" className="font-semibold hover:text-white/60 transition-colors">
           band.stream
-        </a>
+        </Link>
       </footer>
     </main>
   );

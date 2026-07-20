@@ -110,7 +110,7 @@ function NewsletterButton({
       >
         <Mail className="w-5 h-5 text-neutral-900 shrink-0" />
         <span className="flex-1 text-left text-sm font-semibold text-neutral-900">
-          S'inscrire à la newsletter
+          S&apos;inscrire à la newsletter
         </span>
         <span className="text-xs font-bold text-neutral-500 uppercase tracking-wide">
           Sign Up

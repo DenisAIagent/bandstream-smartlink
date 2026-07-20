@@ -130,7 +130,7 @@ function Newsletter({
                 required
                 autoFocus
                 className="flex-1 min-w-0 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-shadow"
-                style={{ focusRingColor: accentColor } as any}
+                style={{ focusRingColor: accentColor } as unknown as React.CSSProperties}
               />
               <button
                 type="submit"

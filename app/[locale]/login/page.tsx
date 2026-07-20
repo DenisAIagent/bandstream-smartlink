@@ -8,6 +8,7 @@ import { FcGoogle } from 'react-icons/fc';
 import Image from 'next/image';
 import { useSession } from "next-auth/react";
 import {useTranslations} from 'next-intl';
+import Link from 'next/link';
 import LoginForm from '@/components/auth/LoginForm';
 
 export default function Login() {
@@ -89,9 +90,9 @@ export default function Login() {
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             {tl('no_access')}{' '}
-            <a href="/#cta" className="underline hover:text-foreground">
+            <Link href="/#cta" className="underline hover:text-foreground">
               {tl('join_alpha')}
-            </a>
+            </Link>
           </p>
           {/* <Button 
             variant="outline" 
