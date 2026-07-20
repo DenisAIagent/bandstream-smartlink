@@ -217,7 +217,7 @@ const BandCoverImage: React.FC<BandProps> = ({ bandData }) => {
 
         <audio
           ref={audioRef}
-          src={bandData.musicSample}
+          src={bandData.musicSample ?? undefined}
           onEnded={() => setIsPlaying(false)}
         />
       </div>

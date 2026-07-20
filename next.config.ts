@@ -77,11 +77,14 @@ const remotePatterns = [
 // Combine all configurations into a single object
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Audit APP-02 : le typecheck et le lint redeviennent BLOQUANTS au build.
+  // Les erreurs existantes ont été corrigées (tsc --noEmit = 0 erreur) ; une
+  // régression de type ou de lint doit désormais empêcher un déploiement.
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     remotePatterns,

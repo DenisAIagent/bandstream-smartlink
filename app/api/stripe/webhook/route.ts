@@ -223,7 +223,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleChargeRefunded(charge: Stripe.Charge) {
   if (!charge.refunded) return; // remboursement partiel → pas de downgrade
 
-  const invoiceRef = charge.invoice;
+  const invoiceRef = (charge as unknown as { invoice?: string | { id: string } | null }).invoice;
   const invoiceId = typeof invoiceRef === "string" ? invoiceRef : invoiceRef?.id;
   if (!invoiceId) return;
 
@@ -250,7 +250,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const sub = invoice.subscription;
+  const sub = (invoice as unknown as { subscription?: string | { id: string } | null }).subscription;
   const subscriptionId = typeof sub === "string" ? sub : sub?.id;
   if (!subscriptionId) return;
 

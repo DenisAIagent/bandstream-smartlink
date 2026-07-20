@@ -22,7 +22,11 @@ function forge(payload: Record<string, unknown>): string {
 
 test("round-trip signé/vérifié avec la bonne audience", () => {
   const token = signSSOTokenWith(SECRET, { email: "a@b.c", plan: "PRO" }, SSO_AUD.shop);
-  const payload = verifySSOTokenWith(SECRET, token, { aud: SSO_AUD.shop });
+  const payload = verifySSOTokenWith<{ aud?: string; iat?: number; exp?: number; email?: string }>(
+    SECRET,
+    token,
+    { aud: SSO_AUD.shop }
+  );
   assert.ok(payload);
   assert.equal(payload.email, "a@b.c");
 });

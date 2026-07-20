@@ -18,8 +18,7 @@ export { metadata }
 export default async function RootLayout({
   children,
 }: {
-  children: React.ReactNode,
-  params: { slug: string[] }
+  children: React.ReactNode
 }) {
   const ta = await getTranslations("admin");
   return (
