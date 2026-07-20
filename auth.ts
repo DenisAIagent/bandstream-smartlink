@@ -4,7 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "@/lib/prisma"
 import { sendSlackUserNotification } from '@/lib/slack/slack';
 import { notifyCRM } from '@/lib/crm-events';
-import { verifySSOTokenWith } from '@/lib/shop-sso';
+import { verifySSOTokenWith, SSO_AUD } from '@/lib/shop-sso';
 import Credentials from "next-auth/providers/credentials"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { resolveLabelMemberships } from "@/lib/services/label-team"
@@ -103,8 +103,10 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
         const payload = verifySSOTokenWith<{
           type?: string;
           agent_email?: string;
+          aud?: string;
+          iat?: number;
           exp: number;
-        }>(secret, token);
+        }>(secret, token, { aud: SSO_AUD.appAdminAccess });
         if (!payload || payload.type !== 'crm_admin_access' || !payload.agent_email) {
           throw new Error('Invalid CRM SSO token');
         }
@@ -233,7 +235,15 @@ const { auth: realAuth, handlers, signIn, signOut } = NextAuth({
 
       const rootDomainUrl = process.env.ROOT_DOMAIN_URL || 'https://band.stream';
       const internalApiToken = process.env.INTERNAL_API_TOKEN;
-      await fetch(`${rootDomainUrl}/api/mails/send-welcome-mail?internalApiToken=${internalApiToken}&username=${params.user.name}&email=${params.user.email}`);
+      // Secret en en-tête Bearer (jamais en query string) — audit APP-08.
+      await fetch(`${rootDomainUrl}/api/mails/send-welcome-mail`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(internalApiToken ? { Authorization: `Bearer ${internalApiToken}` } : {}),
+        },
+        body: JSON.stringify({ username: params.user.name, email: params.user.email }),
+      });
     }
   },
 

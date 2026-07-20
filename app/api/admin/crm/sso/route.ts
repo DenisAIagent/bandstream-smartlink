@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/api-guard";
-import { signSSOTokenWith } from "@/lib/shop-sso";
+import { signSSOTokenWith, SSO_AUD } from "@/lib/shop-sso";
 
 /**
  * Pont SSO app → CRM interne (Logiciels internes/bandstream-crm).
@@ -30,7 +30,7 @@ export async function GET() {
   const token = signSSOTokenWith(secret, {
     email,
     name: session!.user?.name ?? email.split("@")[0],
-  });
+  }, SSO_AUD.crm);
 
   const target = new URL("/api/v1/auth/sso/bandstream", crmURL);
   target.searchParams.set("token", token);

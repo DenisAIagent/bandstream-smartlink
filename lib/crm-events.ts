@@ -1,4 +1,4 @@
-import { signSSOTokenWith } from "@/lib/shop-sso";
+import { signSSOTokenWith, SSO_AUD } from "@/lib/shop-sso";
 
 /**
  * Notifications sortantes vers le CRM interne (bandstream-crm).
@@ -36,7 +36,7 @@ export async function notifyCRM(event: CRMEvent): Promise<void> {
   if (!apiURL || !secret) return; // CRM non configuré : no-op silencieux
 
   try {
-    const token = signSSOTokenWith(secret, { ...event });
+    const token = signSSOTokenWith(secret, { ...event }, SSO_AUD.crmWebhook);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(new URL("/api/v1/bandstream/webhook", apiURL), {

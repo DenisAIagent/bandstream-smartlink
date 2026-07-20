@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { signIn } from "@/auth";
-import { verifySSOTokenWith } from "@/lib/shop-sso";
+import { verifySSOTokenWith, SSO_AUD } from "@/lib/shop-sso";
 
 /**
  * Atterrissage du raccourci support « Accéder au compte band.stream »
@@ -26,8 +26,10 @@ export async function GET(request: NextRequest) {
   const payload = verifySSOTokenWith<{
     type?: string;
     account_id?: string;
+    aud?: string;
+    iat?: number;
     exp: number;
-  }>(secret, token);
+  }>(secret, token, { aud: SSO_AUD.appAdminAccess });
   if (!payload || payload.type !== "crm_admin_access") {
     return NextResponse.redirect(new URL("/login?error=crm_sso", request.nextUrl.origin));
   }
